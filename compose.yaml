@@ -12,6 +12,15 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ../portfolio/aspnet-api/images:/usr/share/nginx/html/images:ro
     restart: always
+    networks:
+      shared:
+        aliases:
+          - web-proxy
 
 volumes:
   pg_data:
+
+networks:
+  shared:
+    external: true
+    name: shared_net

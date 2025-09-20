@@ -33,6 +33,8 @@ jobs:
         run: |
           ssh ${{ vars.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ vars.DEPLOY_PATH }}
+            # Ensure shared external network exists for cross-project service discovery
+            sudo docker network inspect shared_net >/dev/null 2>&1 || sudo docker network create shared_net
             # Create SSL directory if it doesn't exist
             mkdir -p nginx/ssl
             # Create SSL certificates (add your Cloudflare origin cert content here)
