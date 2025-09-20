@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main] # Adjust branch name if needed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+          if_key_exists: replace
+
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy with rsync
+        run: |
+          rsync -avz \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            compose.yaml \
+            nginx \
+            ${{ vars.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.DEPLOY_PATH }}
+
+      - name: Execute remote commands
+        run: |
+          ssh ${{ vars.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ vars.DEPLOY_PATH }}
+            # Create SSL directory if it doesn't exist
+            mkdir -p nginx/ssl
+            # Create SSL certificates (add your Cloudflare origin cert content here)
+            echo "${{ secrets.CLOUDFLARE_ORIGIN_CERT }}" > nginx/ssl/cloudflare-origin.crt
+            echo "${{ secrets.CLOUDFLARE_ORIGIN_KEY }}" > nginx/ssl/cloudflare-origin.key
+            sudo docker compose -f compose.yaml down
+            sudo docker compose -f compose.yaml up --build -d
+          EOF
